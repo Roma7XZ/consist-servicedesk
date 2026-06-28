@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ПМ.11: Таблица ролей и пользователей
+model User {
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  password  String     // Здесь будет bcrypt хеш
+  role      Role       @default(ENGINEER)
+  name      String
+  incidents Incident[] // Связь: заявки, созданные пользователем
+  createdAt DateTime   @default(now())
+}
+
+enum Role {
+  ADMIN
+  ENGINEER
+  ANALYST
+}
+
+// ПМ.11, ПМ.01: Таблица инцидентов
+model Incident {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  category    String   // 'ПО', 'Оборудование', 'Сеть', 'ИБ'
+  priority    String   // 'Низкий', 'Средний', 'Высокий', 'Критический'
+  status      String   @default("Открыт") // 'Открыт', 'В работе', 'Решен', 'Закрыт'
+  authorId    Int
+  author      User     @relation(fields: [authorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ПМ.11: Реестр импортозамещенного ПО
+model Software {
+  id         Int      @id @default(autoincrement())
+  name       String
+  vendor     String
+  importFree Boolean  @default(true)
+  facility   String   // Например, 'Курская АЭС'
+  installedAt DateTime @default(now())
+}
