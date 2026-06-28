@@ -7,10 +7,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: consist_db
+      # Указываем Postgres сохранять данные в подпапку (решает проблемы с правами на Windows)
+      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Проецируем папку из контейнера в реальную папку db_data в корне твоего проекта
+      - ./db_data:/var/lib/postgresql/data
 
   backend:
     build: ./backend
@@ -34,6 +37,3 @@ services:
       - "5173:80"
     depends_on:
       - backend
-
-volumes:
-  pgdata:
