@@ -1,5 +1,6 @@
 <script setup>
-import { ref, computed } from 'vue';
+// ДОБАВЛЕН ИМПОРТ onMounted
+import { ref, computed, onMounted } from 'vue'; 
 import { useAuthStore } from '../stores/authStore';
 import { useIncidentStore } from '../stores/incidentStore';
 import { getErrorMessage } from '../services/api';
@@ -11,6 +12,16 @@ const incidentStore = useIncidentStore();
 // Управление видимостью формы
 const showForm = ref(false);
 const submittingIncident = ref(false);
+
+// ВАЖНО: Запрашиваем данные с бэкенда при загрузке страницы!
+onMounted(async () => {
+  try {
+    // Вызываем метод загрузки из твоего store
+    await incidentStore.fetchIncidents(); 
+  } catch (error) {
+    console.error('Ошибка при первичной загрузке заявок:', error);
+  }
+});
 
 const getEmptyIncident = () => ({
   title: '',

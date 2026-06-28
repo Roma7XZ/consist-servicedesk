@@ -1,5 +1,4 @@
 const express = require('express');
-
 const router = express.Router();
 
 const prisma = require('../db');
@@ -32,25 +31,21 @@ const canAccessIncident = (user, incident) => {
   if (user.role === 'ADMIN' || user.role === 'ANALYST') {
     return true;
   }
-
   return incident.authorId === user.id;
 };
 
-// Защищаем все маршруты ниже авторизацией
+// Защищаем все маршруты авторизацией
 router.use(requireAuth);
 
 // GET: Получить список инцидентов (с пагинацией)
 router.get('/', async (req, res) => {
-  // Защита от перегрузки БД: максимум 100 записей за раз, по умолчанию 50
   const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 50));
   const offset = Math.max(0, Number(req.query.offset) || 0);
 
   try {
     const where =
       req.user.role === 'ENGINEER'
-        ? {
-            authorId: req.user.id,
-          }
+        ? { authorId: req.user.id }
         : {};
 
     const incidents = await prisma.incident.findMany({
@@ -59,16 +54,14 @@ router.get('/', async (req, res) => {
       orderBy: {
         createdAt: 'desc',
       },
-      take: limit,  // Ограничиваем количество возвращаемых строк
-      skip: offset, // Пропускаем уже загруженные строки
+      take: limit,
+      skip: offset,
     });
 
     res.json(incidents);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: 'Ошибка при получении инцидентов',
-    });
+    res.status(500).json({ error: 'Ошибка при получении инцидентов' });
   }
 });
 
@@ -77,37 +70,27 @@ router.get('/:id', async (req, res) => {
   const id = parsePositiveInt(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      error: 'Некорректный ID инцидента',
-    });
+    return res.status(400).json({ error: 'Некорректный ID инцидента' });
   }
 
   try {
     const incident = await prisma.incident.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
       include: incidentInclude,
     });
 
     if (!incident) {
-      return res.status(404).json({
-        error: 'Инцидент не найден',
-      });
+      return res.status(404).json({ error: 'Инцидент не найден' });
     }
 
     if (!canAccessIncident(req.user, incident)) {
-      return res.status(403).json({
-        error: 'Нет доступа к этому инциденту',
-      });
+      return res.status(403).json({ error: 'Нет доступа к этому инциденту' });
     }
 
     res.json(incident);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: 'Ошибка при получении инцидента',
-    });
+    res.status(500).json({ error: 'Ошибка при получении инцидента' });
   }
 });
 
@@ -116,9 +99,7 @@ router.post('/', async (req, res) => {
   const { title, description, category, priority } = req.body;
 
   if (!isNonEmptyString(title)) {
-    return res.status(400).json({
-      error: 'Поле "title" обязательно',
-    });
+    return res.status(400).json({ error: 'Поле "title" обязательно' });
   }
 
   if (!ALLOWED_CATEGORIES.includes(category)) {
@@ -137,11 +118,10 @@ router.post('/', async (req, res) => {
     const newIncident = await prisma.incident.create({
       data: {
         title: title.trim(),
-        description: isNonEmptyString(description)
-          ? description.trim()
-          : null,
+        description: isNonEmptyString(description) ? description.trim() : null,
         category,
         priority,
+        status: 'Открыт', // Добавлено явное указание стартового статуса
         authorId: req.user.id,
       },
       include: incidentInclude,
@@ -150,9 +130,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(newIncident);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: 'Ошибка при создании инцидента',
-    });
+    res.status(500).json({ error: 'Ошибка при создании инцидента' });
   }
 });
 
@@ -161,47 +139,35 @@ router.patch('/:id', async (req, res) => {
   const id = parsePositiveInt(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      error: 'Некорректный ID инцидента',
-    });
+    return res.status(400).json({ error: 'Некорректный ID инцидента' });
   }
 
   const { title, description, category, priority, status } = req.body;
 
   try {
     const existingIncident = await prisma.incident.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     if (!existingIncident) {
-      return res.status(404).json({
-        error: 'Инцидент не найден',
-      });
+      return res.status(404).json({ error: 'Инцидент не найден' });
     }
 
     if (!canAccessIncident(req.user, existingIncident)) {
-      return res.status(403).json({
-        error: 'Нет доступа к этому инциденту',
-      });
+      return res.status(403).json({ error: 'Нет доступа к этому инциденту' });
     }
 
     const data = {};
 
     if (title !== undefined) {
       if (!isNonEmptyString(title)) {
-        return res.status(400).json({
-          error: 'Заголовок не может быть пустым',
-        });
+        return res.status(400).json({ error: 'Заголовок не может быть пустым' });
       }
       data.title = title.trim();
     }
 
     if (description !== undefined) {
-      data.description = isNonEmptyString(description)
-        ? description.trim()
-        : null;
+      data.description = isNonEmptyString(description) ? description.trim() : null;
     }
 
     if (category !== undefined) {
@@ -224,9 +190,7 @@ router.patch('/:id', async (req, res) => {
 
     if (status !== undefined) {
       if (req.user.role === 'ENGINEER') {
-        return res.status(403).json({
-          error: 'Инженер не может менять статус заявки',
-        });
+        return res.status(403).json({ error: 'Инженер не может менять статус заявки' });
       }
 
       if (!ALLOWED_STATUSES.includes(status)) {
@@ -238,15 +202,11 @@ router.patch('/:id', async (req, res) => {
     }
 
     if (!Object.keys(data).length) {
-      return res.status(400).json({
-        error: 'Нет данных для обновления',
-      });
+      return res.status(400).json({ error: 'Нет данных для обновления' });
     }
 
     const updatedIncident = await prisma.incident.update({
-      where: {
-        id,
-      },
+      where: { id },
       data,
       include: incidentInclude,
     });
@@ -254,9 +214,7 @@ router.patch('/:id', async (req, res) => {
     res.json(updatedIncident);
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: 'Ошибка при обновлении инцидента',
-    });
+    res.status(500).json({ error: 'Ошибка при обновлении инцидента' });
   }
 });
 
@@ -265,36 +223,25 @@ router.delete('/:id', async (req, res) => {
   const id = parsePositiveInt(req.params.id);
 
   if (!id) {
-    return res.status(400).json({
-      error: 'Некорректный ID инцидента',
-    });
+    return res.status(400).json({ error: 'Некорректный ID инцидента' });
   }
 
   if (req.user.role !== 'ADMIN') {
-    return res.status(403).json({
-      error: 'Удалять заявки может только администратор',
-    });
+    return res.status(403).json({ error: 'Удалять заявки может только администратор' });
   }
 
   try {
     await prisma.incident.delete({
-      where: {
-        id,
-      },
+      where: { id },
     });
 
     res.status(204).send();
   } catch (error) {
     if (error.code === 'P2025') {
-      return res.status(404).json({
-        error: 'Инцидент не найден',
-      });
+      return res.status(404).json({ error: 'Инцидент не найден' });
     }
-
     console.error(error);
-    res.status(500).json({
-      error: 'Ошибка при удалении инцидента',
-    });
+    res.status(500).json({ error: 'Ошибка при удалении инцидента' });
   }
 });
 
