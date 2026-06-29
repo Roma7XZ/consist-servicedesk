@@ -31,6 +31,8 @@ const handleLogout = () => {
         <router-link to="/dashboard" class="nav-btn"><span class="icon">📊</span> Дашборд</router-link>
         <router-link to="/incidents" class="nav-btn"><span class="icon">📋</span> Заявки</router-link>
         
+        <router-link to="/software" class="nav-btn"><span class="icon">💻</span> Учет ПО</router-link>
+        
         <router-link to="/users" class="nav-btn"><span class="icon">👥</span> Пользователи</router-link>
         <router-link to="/settings" class="nav-btn"><span class="icon">⚙️</span> Настройки</router-link>
       </nav>
@@ -38,7 +40,7 @@ const handleLogout = () => {
       <div class="sidebar-footer">
         <div class="user-info">
           <strong>{{ authStore.user?.name }}</strong>
-          <small>{{ authStore.user?.role }}</small>
+          <small>{{ authStore.user?.role === 'ADMIN' ? 'Администратор' : authStore.user?.role === 'ENGINEER' ? 'Инженер' : 'Аналитик' }}</small>
         </div>
         <button class="action-btn" @click="toggleTheme">🎨 Тема</button>
         <button class="action-btn danger" @click="handleLogout">🚪 Выйти</button>
